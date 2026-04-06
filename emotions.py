@@ -2,6 +2,17 @@ import cv2
 import numpy as np
 from tensorflow.keras.models import load_model
 
+
+def open_camera(indices=(0, 1, 2)):
+    for idx in indices:
+        cap = cv2.VideoCapture(idx, cv2.CAP_DSHOW)
+        if cap.isOpened():
+            ok, _ = cap.read()
+            if ok:
+                return cap, idx
+            cap.release()
+    return None, None
+
 # Carregar modelo de emoção
 emotion_model = load_model("fer2013_mini_XCEPTION.102-0.66.hdf5", compile=False)
 
@@ -22,7 +33,13 @@ face_cascade = cv2.CascadeClassifier(
 )
 
 # Webcam
-cap = cv2.VideoCapture(3)
+cap, cam_idx = open_camera()
+
+if cap is None:
+    print("Erro ao acessar a camera. Indices testados: 0, 1, 2")
+    raise SystemExit(1)
+
+print(f"Camera ativa no indice {cam_idx}")
 
 while True:
     ret, frame = cap.read()

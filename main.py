@@ -1,17 +1,30 @@
 import cv2, time
 
+# Função para abrir a câmera testando múltiplos índices
+def open_camera(indices=(0, 1, 2)):
+    for idx in indices:
+        cap = cv2.VideoCapture(idx, cv2.CAP_DSHOW)
+        if cap.isOpened():
+            ok, _ = cap.read()
+            if ok:
+                return cap, idx
+            cap.release()
+    return None, None
+
 # Carrega classificador pré-treinado de detecção facial
 face_cascade = cv2.CascadeClassifier(
     cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
 )
 
 # Inicializa webcam
-cap = cv2.VideoCapture(3)
+cap, cam_idx = open_camera()
 start_time = time.time()
 
-if not cap.isOpened():
-    print("Erro ao acessar a câmera")
-    exit()
+if cap is None:
+    print("Erro ao acessar a camera. Indices testados: 0, 1, 2")
+    raise SystemExit(1)
+
+print(f"Camera ativa no indice {cam_idx}")
 
 while True:
     ret, frame = cap.read()
