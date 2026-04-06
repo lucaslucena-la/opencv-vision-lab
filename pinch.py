@@ -1,8 +1,11 @@
 import cv2
+import math
 import mediapipe as mp
+import numpy as np
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
-import math
+from PIL import Image, ImageFont
+from pilmoji import Pilmoji
 
 model_path = "hand_landmarker.task"
 
@@ -14,19 +17,56 @@ VisionRunningMode = vision.RunningMode
 options = HandLandmarkerOptions(
     base_options=BaseOptions(model_asset_path=model_path),
     running_mode=VisionRunningMode.VIDEO,
-    num_hands=1
+    num_hands=2
 )
 
 landmarker = HandLandmarker.create_from_options(options)
 
-cap = cv2.VideoCapture(3)
+cap = cv2.VideoCapture(0)
 
 timestamp = 0
 
-# Objeto controlável
 obj_x, obj_y = 300, 300
 obj_radius = 40
-dragging = False
+pinch_dist_ref = None
+
+def prerender_emoji(emoji, size):
+    font = ImageFont.load_default(size=size)
+    canvas = Image.new("RGBA", (size * 2, size * 2), (0, 0, 0, 0))
+    with Pilmoji(canvas) as draw:
+        draw.text((0, 0), emoji, font=font)
+    bbox = canvas.getbbox()
+    if bbox:
+        canvas = canvas.crop(bbox)
+    return np.array(canvas)
+
+COOKIE_BASE = prerender_emoji("🍪", 512)
+
+def draw_cookie(frame, x, y, radius):
+    size = max(radius * 2, 1)
+    resized = cv2.resize(COOKIE_BASE, (size, size), interpolation=cv2.INTER_AREA)
+    rh, rw = resized.shape[:2]
+    h, w = frame.shape[:2]
+    x0, y0 = x - rw // 2, y - rh // 2
+    fx1, fy1 = max(x0, 0), max(y0, 0)
+    fx2, fy2 = min(x0 + rw, w), min(y0 + rh, h)
+    if fx2 <= fx1 or fy2 <= fy1:
+        return frame
+    ex1, ey1 = fx1 - x0, fy1 - y0
+    ex2, ey2 = ex1 + (fx2 - fx1), ey1 + (fy2 - fy1)
+    roi = frame[fy1:fy2, fx1:fx2]
+    src = resized[ey1:ey2, ex1:ex2]
+    alpha = src[:, :, 3:4] / 255.0
+    rgb = cv2.cvtColor(src[:, :, :3], cv2.COLOR_RGB2BGR)
+    frame[fy1:fy2, fx1:fx2] = (rgb * alpha + roi * (1 - alpha)).astype(np.uint8)
+    return frame
+
+def pinch_center(hand, w, h):
+    ix, iy = int(hand[8].x * w), int(hand[8].y * h)
+    tx, ty = int(hand[4].x * w), int(hand[4].y * h)
+    dist = math.hypot(ix - tx, iy - ty)
+    cx, cy = (ix + tx) // 2, (iy + ty) // 2
+    return dist, cx, cy
 
 while True:
     ret, frame = cap.read()
@@ -41,35 +81,28 @@ while True:
     timestamp += 1
 
     h, w, _ = frame.shape
+    hands = result.hand_landmarks
 
-    if result.hand_landmarks:
-        hand = result.hand_landmarks[0]
-
-        index_tip = hand[8]
-        thumb_tip = hand[4]
-
-        ix, iy = int(index_tip.x * w), int(index_tip.y * h)
-        tx, ty = int(thumb_tip.x * w), int(thumb_tip.y * h)
-
-        # Desenhar dedos
-        cv2.circle(frame, (ix, iy), 10, (0, 255, 0), -1)
-        cv2.circle(frame, (tx, ty), 10, (255, 0, 0), -1)
-
-        # Distância entre dedos
-        dist = math.hypot(ix - tx, iy - ty)
-
-        # Threshold ajustável
+    if len(hands) == 1:
+        pinch_dist_ref = None
+        dist, cx, cy = pinch_center(hands[0], w, h)
         if dist < 40:
-            dragging = True
+            obj_x, obj_y = cx, cy
+
+    elif len(hands) == 2:
+        dist0, cx0, cy0 = pinch_center(hands[0], w, h)
+        dist1, cx1, cy1 = pinch_center(hands[1], w, h)
+        if dist0 < 40 and dist1 < 40:
+            spread = math.hypot(cx0 - cx1, cy0 - cy1)
+            if pinch_dist_ref is None:
+                pinch_dist_ref = (spread, obj_radius)
+            else:
+                ref_spread, ref_radius = pinch_dist_ref
+                obj_radius = max(10, min(300, int(ref_radius * spread / ref_spread)))
         else:
-            dragging = False
+            pinch_dist_ref = None
 
-        # Se estiver "pinçando", move objeto
-        if dragging:
-            obj_x, obj_y = ix, iy
-
-    # Desenhar objeto
-    cv2.circle(frame, (obj_x, obj_y), obj_radius, (0, 0, 255), -1)
+    frame = draw_cookie(frame, obj_x, obj_y, obj_radius)
 
     cv2.imshow("Controle por Gestos", frame)
 
