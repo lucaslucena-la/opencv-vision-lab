@@ -1,5 +1,10 @@
 import cv2
 import numpy as np
+import sys
+import time
+import mediapipe as mp
+from mediapipe.tasks import python as _mp_python
+from mediapipe.tasks.python import vision as _mp_vision
 from tensorflow.keras.applications.efficientnet import (
     EfficientNetB0,
     preprocess_input,
@@ -62,6 +67,15 @@ FRUIT_EMOJIS = {
 # Carrega modelo pré-treinado EfficientNetB0
 # com pesos do ImageNet
 model = EfficientNetB0(weights="imagenet")
+
+# Hand landmarker para botão X
+_hand_landmarker = _mp_vision.HandLandmarker.create_from_options(
+    _mp_vision.HandLandmarkerOptions(
+        base_options=_mp_python.BaseOptions(model_asset_path="hand_landmarker.task"),
+        running_mode=_mp_vision.RunningMode.VIDEO,
+        num_hands=1,
+    )
+)
 
 # =============================
 # EMOJI
@@ -199,68 +213,96 @@ def classify_fruit(frame):
 # =============================
 
 # Abre câmera
-cap = cv2.VideoCapture(3)
+def _open_camera(indices=(0, 1, 2)):
+    for idx in indices:
+        cap = cv2.VideoCapture(idx)
+        if cap.isOpened():
+            ok, _ = cap.read()
+            if ok:
+                return cap
+            cap.release()
+    return None
 
-frame_count = 0
+def main():
+    cap = _open_camera()
+    if cap is None:
+        print("Erro: nenhuma camera encontrada nos indices 0, 1, 2")
+        return
 
-# Texto inicial
-display_texts = ["Procurando fruta..."]
+    frame_count = 0
+    ts = int(time.time() * 1000)
+    x_hover_start = None
+    display_texts = ["Procurando fruta..."]
+    main_label = None
 
-# Armazena fruta principal detectada
-main_label = None
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
 
-while True:
-    ret, frame = cap.read()
+        frame = cv2.flip(frame, 1)
+        frame_count += 1
+        ts += 1
 
-    if not ret:
-        break
+        if frame_count % PROCESS_EVERY_N_FRAMES == 0:
+            results = classify_fruit(frame)
+            if results:
+                main_label = results[0][0]
+                display_texts = [
+                    f"{label}: {conf:.2f}%"
+                    for label, conf in results[:3]
+                ]
+            else:
+                display_texts = ["Nenhuma fruta detectada"]
+                main_label = None
 
-    frame_count += 1
+        if main_label:
+            frame = draw_emoji(frame, main_label)
 
-    # Processa somente a cada N frames
-    if frame_count % PROCESS_EVERY_N_FRAMES == 0:
-        results = classify_fruit(frame)
+        y = 30
+        for text in display_texts:
+            cv2.putText(frame, text, (10, y),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+            y += 30
 
-        if results:
-            # Primeira fruta detectada
-            main_label = results[0][0]
-
-            # Exibe até 3 resultados
-            display_texts = [
-                f"{label}: {conf:.2f}%"
-                for label, conf in results[:3]
-            ]
-        else:
-            display_texts = ["Nenhuma fruta detectada"]
-            main_label = None
-
-    # DESENHA EMOJI
-    if main_label:
-        frame = draw_emoji(frame, main_label)
-
-    # Mostra textos na tela
-    y = 30
-    for text in display_texts:
-        cv2.putText(
-            frame,
-            text,
-            (10, y),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.8,
-            (0, 255, 0),
-            2
+        _lm_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        _lm_res = _hand_landmarker.detect_for_video(
+            mp.Image(image_format=mp.ImageFormat.SRGB, data=_lm_rgb), ts
         )
-        y += 30
+        fx, fy = None, None
+        if _lm_res.hand_landmarks:
+            _tip = _lm_res.hand_landmarks[0][8]
+            _fh, _fw = frame.shape[:2]
+            fx, fy = int(_tip.x * _fw), int(_tip.y * _fh)
 
-    # Exibe janela
-    cv2.imshow("Classificador de Frutas", frame)
+        _ffw = frame.shape[1]
+        _bx1, _bx2 = _ffw - 62, _ffw - 10
+        _now = time.time()
+        _in_x = fx is not None and _bx1 < fx < _bx2 and 10 < fy < 62
+        if _in_x:
+            if x_hover_start is None:
+                x_hover_start = _now
+            _prog = min((_now - x_hover_start) / 1.5, 1.0)
+            cv2.rectangle(frame, (_bx1, 10), (_bx2, 62), (0, 0, 120), -1)
+            cv2.rectangle(frame, (_bx1, int(62 - 52 * _prog)), (_bx2, 62), (40, 40, 255), -1)
+            if _prog >= 1.0:
+                cap.release()
+                cv2.destroyAllWindows()
+                return
+        else:
+            x_hover_start = None
+            cv2.rectangle(frame, (_bx1, 10), (_bx2, 62), (0, 0, 80), -1)
+        cv2.rectangle(frame, (_bx1, 10), (_bx2, 62), (100, 100, 210), 2)
+        cv2.putText(frame, "X", (_bx1 + 14, 48), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2)
 
-    # ESC fecha programa
-    if cv2.waitKey(1) & 0xFF == 27:
-        break
+        cv2.imshow("Classificador de Frutas", frame)
 
-# Libera câmera
-cap.release()
+        if cv2.waitKey(1) & 0xFF == 27:
+            break
 
-# Fecha janelas
-cv2.destroyAllWindows()
+    cap.release()
+    cv2.destroyAllWindows()
+
+
+if __name__ == "__main__":
+    main()

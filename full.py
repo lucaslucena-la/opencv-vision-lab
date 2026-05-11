@@ -150,7 +150,7 @@ def draw_key_hints(img):
 
 def open_camera(indices=(0, 1, 2)):
     for idx in indices:
-        cap = cv2.VideoCapture(idx, cv2.CAP_DSHOW)
+        cap = cv2.VideoCapture(idx)
         if cap.isOpened():
             ok, _ = cap.read()
             if ok:
