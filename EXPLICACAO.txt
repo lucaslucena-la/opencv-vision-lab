@@ -1,0 +1,25 @@
+VISION LAB — O QUE ESTÁ ACONTECENDO AQUI?
+
+A câmera aponta para você, e o computador "enxerga" o que ela mostra. Mas ele
+não enxerga como a gente: ele transforma a imagem em números e procura padrões.
+
+Tudo o que você vê é feito por um programa que aprendeu sozinho. Mostramos
+milhares de exemplos para ele — milhares de fotos de rostos felizes, tristes,
+de bananas, de mãos fazendo "joinha" — e ele aprendeu a reconhecer esses padrões.
+Quando a câmera liga, ele compara o que vê com tudo o que aprendeu e tenta
+adivinhar: "isto é um rosto? está feliz? isto é uma maçã?".
+
+Uma câmera inteligente encontra a ponta do seu dedo indicador e a transforma
+em um cursor na tela. Aponte para um cartão e segure
+por 2 segundos — o programa abre.
+
+EXPERIMENTE:
+
+- Frutas — mostre uma fruta para a câmera e veja se ela acerta o nome.
+- Mãos — faça um gesto (joinha, V de vitória, punho) e veja o emoji aparecer.
+- Pinça — junte dois dedos para arrastar o biscoito, use as duas mãos para ampliar.
+- Jogo — colete moedas com o dedo e bata seu recorde.
+- Emoções — sorria, faça cara feia e veja se o computador adivinha o que você sente.
+
+Resumindo: é um computador que aprendeu a ver, e você brinca com ele sem encostar
+em nada.
