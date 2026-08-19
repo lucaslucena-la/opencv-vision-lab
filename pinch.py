@@ -1,3 +1,4 @@
+from window_utils import show
 import cv2
 import math
 import mediapipe as mp
@@ -131,10 +132,9 @@ def main():
         cv2.rectangle(frame, (_bx1, 10), (_bx2, 62), (100, 100, 210), 2)
         cv2.putText(frame, "X", (_bx1 + 14, 48), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2)
 
-        cv2.imshow("Controle por Gestos", frame)
+        show("Controle por Gestos", frame)
 
-        if cv2.waitKey(1) & 0xFF == 27:
-            break
+        cv2.waitKey(1)
 
     cap.release()
     cv2.destroyAllWindows()

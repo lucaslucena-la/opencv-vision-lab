@@ -1,3 +1,4 @@
+from window_utils import show
 import os
 import time
 import urllib.request
@@ -179,10 +180,9 @@ def main():
             2,
         )
 
-        cv2.imshow("Emojis por gestos", frame)
+        show("Emojis por gestos", frame)
 
-        if cv2.waitKey(1) & 0xFF == 27:
-            break
+        cv2.waitKey(1)
 
     cap.release()
     cv2.destroyAllWindows()

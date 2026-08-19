@@ -1,3 +1,4 @@
+from window_utils import show
 import cv2
 import numpy as np
 from tensorflow.keras.models import load_model
@@ -90,7 +91,7 @@ while True:
                 (255, 0, 0),
                 1)
 
-    cv2.imshow("Deteccao de Emocao - Mostra CC", frame)
+    show("Deteccao de Emocao - Mostra CC", frame)
 
     if cv2.waitKey(1) & 0xFF == 27:
         break
