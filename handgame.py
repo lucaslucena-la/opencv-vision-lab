@@ -104,7 +104,15 @@ def salvar_pontuacao(iniciais, score):
 # =========================
 # FUNÇÃO DE DETECÇÃO DO DEDO
 # =========================
+_last_det = {"ts": -1, "x": None, "y": None}
+
+
 def detectar_dedo(frame, timestamp):
+    # Detecta a cada 2 frames (mais leve em maquinas fracas)
+    if timestamp - _last_det["ts"] < 2 and _last_det["x"] is not None:
+        return _last_det["x"], _last_det["y"]
+    _last_det["ts"] = timestamp
+
     # Converte para RGB
     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
@@ -129,6 +137,7 @@ def detectar_dedo(frame, timestamp):
         x = int(index_tip.x * w)
         y = int(index_tip.y * h)
 
+    _last_det["x"], _last_det["y"] = x, y
     return x, y
 
 
@@ -232,6 +241,8 @@ def _open_camera(indices=(0, 1, 2)):
     for idx in indices:
         cap = cv2.VideoCapture(idx)
         if cap.isOpened():
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
             ok, _ = cap.read()
             if ok:
                 return cap

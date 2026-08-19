@@ -118,8 +118,11 @@ def draw_emoji(frame, emoji):
 
 def main():
     cap = cv2.VideoCapture(0)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
     ts = int(time.time() * 1000)
     x_hover_start = None
+    result = None
 
     while True:
         ret, frame = cap.read()
@@ -127,10 +130,10 @@ def main():
             break
 
         frame = cv2.flip(frame, 1)
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
-        result = recognizer.recognize_for_video(mp_image, ts)
+        if result is None or ts % 2 == 0:
+            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
+            result = recognizer.recognize_for_video(mp_image, ts)
         ts += 1
 
         h, w, _ = frame.shape

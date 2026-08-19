@@ -3,6 +3,8 @@ import cv2
 import numpy as np
 
 _screen = None
+_canvas = None
+_canvas_size = None
 
 
 def _screen_size():
@@ -69,7 +71,12 @@ def show(name, frame):
     else:
         resized = frame
 
-    canvas = np.zeros((sh, sw, 3), dtype=np.uint8)
+    global _canvas, _canvas_size
+    if _canvas is None or _canvas_size != (sh, sw):
+        _canvas = np.zeros((sh, sw, 3), dtype=np.uint8)
+        _canvas_size = (sh, sw)
+    canvas = _canvas
+
     x = (sw - nw) // 2
     y = (sh - nh) // 2
     canvas[y:y + nh, x:x + nw] = resized

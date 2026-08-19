@@ -41,6 +41,8 @@ def open_camera(indices=(0, 1, 2)):
     for idx in indices:
         cap = cv2.VideoCapture(idx)
         if cap.isOpened():
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
             ok, _ = cap.read()
             if ok:
                 return cap
@@ -135,7 +137,16 @@ def draw_card(frame, card, progress, hovered):
                     cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 180), 1)
 
 # ── Finger detection ───────────────────────────────────────────────────────────
+_finger_frame = -1
+_finger_pos = None
+
+
 def get_finger(frame, ts):
+    global _finger_frame, _finger_pos
+    # Detecta a cada 2 frames (mais leve em maquinas fracas)
+    if ts - _finger_frame < 2:
+        return _finger_pos
+    _finger_frame = ts
     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     result = landmarker.detect_for_video(
         mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb), ts
@@ -143,8 +154,10 @@ def get_finger(frame, ts):
     if result.hand_landmarks:
         tip = result.hand_landmarks[0][8]
         h, w = frame.shape[:2]
-        return int(tip.x * w), int(tip.y * h)
-    return None
+        _finger_pos = (int(tip.x * w), int(tip.y * h))
+    else:
+        _finger_pos = None
+    return _finger_pos
 
 def draw_cursor(frame, pos):
     x, y = pos
@@ -195,8 +208,7 @@ def run():
         ts += 1
         now = time.time()
 
-        # Title bar
-        cv2.rectangle(frame, (0, 0), (w, 76), (8, 8, 20), -1)
+        # Title (sem barra preta)
         title = "VISION LAB"
         (tw, _), _ = cv2.getTextSize(title, cv2.FONT_HERSHEY_SIMPLEX, 1.1, 2)
         cv2.putText(frame, title, (w // 2 - tw // 2, 34),
