@@ -1,3 +1,4 @@
+from window_utils import show
 import cv2, time
 
 # Função para abrir a câmera testando múltiplos índices
@@ -65,7 +66,7 @@ while True:
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6,
                     (0, 255, 0), 2)
 
-    cv2.imshow("Reconhecimento Facial - Mostra CC", frame)
+    show("Reconhecimento Facial - Mostra CC", frame)
 
     # Pressione ESC para sair
     if cv2.waitKey(1) & 0xFF == 27:

@@ -1,3 +1,4 @@
+from window_utils import show
 import cv2
 import numpy as np
 from tensorflow.keras.models import load_model
@@ -272,7 +273,7 @@ while True:
     draw_top_hud(frame, mode, len(faces), fps)
     draw_key_hints(frame)
 
-    cv2.imshow("Face AI - Sci-Fi HUD", frame)
+    show("Face AI - Sci-Fi HUD", frame)
 
     key = cv2.waitKey(1) & 0xFF
     if key == 27:

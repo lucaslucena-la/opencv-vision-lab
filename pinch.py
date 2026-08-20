@@ -1,3 +1,4 @@
+from window_utils import show
 import cv2
 import math
 import mediapipe as mp
@@ -65,11 +66,14 @@ def pinch_center(hand, w, h):
 
 def main():
     cap = cv2.VideoCapture(0)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
     ts = int(time.time() * 1000)
     x_hover_start = None
     obj_x, obj_y = 300, 300
     obj_radius = 40
     pinch_dist_ref = None
+    result = None
 
     while True:
         ret, frame = cap.read()
@@ -77,10 +81,10 @@ def main():
             break
 
         frame = cv2.flip(frame, 1)
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
-
-        result = landmarker.detect_for_video(mp_image, ts)
+        if result is None or ts % 2 == 0:
+            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
+            result = landmarker.detect_for_video(mp_image, ts)
         ts += 1
 
         h, w, _ = frame.shape
@@ -131,10 +135,9 @@ def main():
         cv2.rectangle(frame, (_bx1, 10), (_bx2, 62), (100, 100, 210), 2)
         cv2.putText(frame, "X", (_bx1 + 14, 48), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2)
 
-        cv2.imshow("Controle por Gestos", frame)
+        show("Controle por Gestos", frame)
 
-        if cv2.waitKey(1) & 0xFF == 27:
-            break
+        cv2.waitKey(1)
 
     cap.release()
     cv2.destroyAllWindows()

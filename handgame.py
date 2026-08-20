@@ -1,3 +1,4 @@
+from window_utils import show
 import cv2
 import numpy as np
 import mediapipe as mp
@@ -103,7 +104,15 @@ def salvar_pontuacao(iniciais, score):
 # =========================
 # FUNÇÃO DE DETECÇÃO DO DEDO
 # =========================
+_last_det = {"ts": -1, "x": None, "y": None}
+
+
 def detectar_dedo(frame, timestamp):
+    # Detecta a cada 2 frames (mais leve em maquinas fracas)
+    if timestamp - _last_det["ts"] < 2 and _last_det["x"] is not None:
+        return _last_det["x"], _last_det["y"]
+    _last_det["ts"] = timestamp
+
     # Converte para RGB
     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
@@ -128,6 +137,7 @@ def detectar_dedo(frame, timestamp):
         x = int(index_tip.x * w)
         y = int(index_tip.y * h)
 
+    _last_det["x"], _last_det["y"] = x, y
     return x, y
 
 
@@ -212,20 +222,16 @@ def selecionar_iniciais_por_gesto(cap, timestamp_ref):
             cv2.rectangle(frame, (_bx1_x, 10), (_bx2_x, 62), (0, 0, 120), -1)
             cv2.rectangle(frame, (_bx1_x, int(62 - 52 * _prog_x)), (_bx2_x, 62), (40, 40, 255), -1)
             if _prog_x >= 1.0:
-                cap.release()
-                cv2.destroyAllWindows()
-                sys.exit(0)
+                return None, timestamp_ref
         else:
             x_hover_start_x = None
             cv2.rectangle(frame, (_bx1_x, 10), (_bx2_x, 62), (0, 0, 80), -1)
         cv2.rectangle(frame, (_bx1_x, 10), (_bx2_x, 62), (100, 100, 210), 2)
         cv2.putText(frame, "X", (_bx1_x + 14, 48), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2)
 
-        cv2.imshow("Mini Jogo - Pegue as Moedas", frame)
+        show("Mini Jogo - Pegue as Moedas", frame)
 
-        key = cv2.waitKey(1) & 0xFF
-        if key == 27:
-            return None, timestamp_ref
+        cv2.waitKey(1)
 
 
 # =========================
@@ -235,6 +241,8 @@ def _open_camera(indices=(0, 1, 2)):
     for idx in indices:
         cap = cv2.VideoCapture(idx)
         if cap.isOpened():
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
             ok, _ = cap.read()
             if ok:
                 return cap
@@ -302,17 +310,15 @@ def main():
                     if _prog_g >= 1.0:
                         cap.release()
                         cv2.destroyAllWindows()
-                        sys.exit(0)
+                        return
                 else:
                     x_hover_start_g = None
                     cv2.rectangle(frame, (_bgx1, 10), (_bgx2, 62), (0, 0, 80), -1)
                 cv2.rectangle(frame, (_bgx1, 10), (_bgx2, 62), (100, 100, 210), 2)
                 cv2.putText(frame, "X", (_bgx1 + 14, 48), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2)
 
-                cv2.imshow("Mini Jogo - Pegue as Moedas", frame)
-                if cv2.waitKey(1) & 0xFF == 27:
-                    game_started = False
-                    break
+                show("Mini Jogo - Pegue as Moedas", frame)
+                cv2.waitKey(1)
                 continue
 
             remaining_time = GAME_TIME - int(time.time() - start_time)
@@ -346,16 +352,15 @@ def main():
                 if _prog_g >= 1.0:
                     cap.release()
                     cv2.destroyAllWindows()
-                    sys.exit(0)
+                    return
             else:
                 x_hover_start_g = None
                 cv2.rectangle(frame, (_bgx1, 10), (_bgx2, 62), (0, 0, 80), -1)
             cv2.rectangle(frame, (_bgx1, 10), (_bgx2, 62), (100, 100, 210), 2)
             cv2.putText(frame, "X", (_bgx1 + 14, 48), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2)
 
-            cv2.imshow("Mini Jogo - Pegue as Moedas", frame)
-            if cv2.waitKey(1) & 0xFF == 27:
-                break
+            show("Mini Jogo - Pegue as Moedas", frame)
+            cv2.waitKey(1)
 
         salvar_pontuacao(iniciais, score)
         ranking = sorted(
@@ -395,7 +400,7 @@ def main():
                             cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
                 y += 35
 
-            cv2.putText(frame, "ESC = voltar ao menu", (150, 430),
+            cv2.putText(frame, "Aponte no X para voltar ao menu", (100, 430),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
             cv2.circle(frame, (go_x, go_y), 12, (255, 0, 0), -1)
 
@@ -411,16 +416,15 @@ def main():
                 if _prog_go >= 1.0:
                     cap.release()
                     cv2.destroyAllWindows()
-                    sys.exit(0)
+                    return
             else:
                 x_hover_start_go = None
                 cv2.rectangle(frame, (_bgox1, 10), (_bgox2, 62), (0, 0, 80), -1)
             cv2.rectangle(frame, (_bgox1, 10), (_bgox2, 62), (100, 100, 210), 2)
             cv2.putText(frame, "X", (_bgox1 + 14, 48), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2)
 
-            cv2.imshow("Mini Jogo - Pegue as Moedas", frame)
-            if cv2.waitKey(1) & 0xFF == 27:
-                break
+            show("Mini Jogo - Pegue as Moedas", frame)
+            cv2.waitKey(1)
 
     cap.release()
     cv2.destroyAllWindows()

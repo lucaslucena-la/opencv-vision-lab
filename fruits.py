@@ -1,3 +1,4 @@
+from window_utils import show
 import cv2
 import numpy as np
 import sys
@@ -217,6 +218,8 @@ def _open_camera(indices=(0, 1, 2)):
     for idx in indices:
         cap = cv2.VideoCapture(idx)
         if cap.isOpened():
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
             ok, _ = cap.read()
             if ok:
                 return cap
@@ -232,6 +235,7 @@ def main():
     frame_count = 0
     ts = int(time.time() * 1000)
     x_hover_start = None
+    fx, fy = None, None
     display_texts = ["Procurando fruta..."]
     main_label = None
 
@@ -265,15 +269,17 @@ def main():
                         cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
             y += 30
 
-        _lm_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        _lm_res = _hand_landmarker.detect_for_video(
-            mp.Image(image_format=mp.ImageFormat.SRGB, data=_lm_rgb), ts
-        )
-        fx, fy = None, None
-        if _lm_res.hand_landmarks:
-            _tip = _lm_res.hand_landmarks[0][8]
-            _fh, _fw = frame.shape[:2]
-            fx, fy = int(_tip.x * _fw), int(_tip.y * _fh)
+        if frame_count % 2 == 0:
+            _lm_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            _lm_res = _hand_landmarker.detect_for_video(
+                mp.Image(image_format=mp.ImageFormat.SRGB, data=_lm_rgb), ts
+            )
+            if _lm_res.hand_landmarks:
+                _tip = _lm_res.hand_landmarks[0][8]
+                _fh, _fw = frame.shape[:2]
+                fx, fy = int(_tip.x * _fw), int(_tip.y * _fh)
+            else:
+                fx, fy = None, None
 
         _ffw = frame.shape[1]
         _bx1, _bx2 = _ffw - 62, _ffw - 10
@@ -295,10 +301,9 @@ def main():
         cv2.rectangle(frame, (_bx1, 10), (_bx2, 62), (100, 100, 210), 2)
         cv2.putText(frame, "X", (_bx1 + 14, 48), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2)
 
-        cv2.imshow("Classificador de Frutas", frame)
+        show("Classificador de Frutas", frame)
 
-        if cv2.waitKey(1) & 0xFF == 27:
-            break
+        cv2.waitKey(1)
 
     cap.release()
     cv2.destroyAllWindows()
